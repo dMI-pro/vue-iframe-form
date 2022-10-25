@@ -1,7 +1,8 @@
 {
   "name": "zg-vue-iframe",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "author": "Dmitriy Prokhvataev <dmitriy@zgpm.pro>",
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build"

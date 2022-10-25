@@ -31,12 +31,11 @@
         />
       </FormItem>
 
-
       <FormItem :errors=phoneValid>
        <vue-tel-input
            v-if="userCountryCode"
            :defaultCountry="userCountryCode"
-           :class="phoneValid[0] ? ' form__input-error' : '' "
+           :class="phoneValid[0] ? ' form__input-error-tel' : '' "
            @input="onChangePhoneInput"
            v-bind="bindProps"
            id="phone1"
@@ -59,17 +58,15 @@
 
 <script setup>
 import {ref, reactive, onMounted, computed } from "vue";
-import axios from "axios";
-
-import {required, email, maxLength, alpha, minLength,  numeric} from "@vuelidate/validators";
+import {required, email, maxLength, alpha} from "@vuelidate/validators";
 import useVuelidate from "@vuelidate/core";
 import {VueTelInput} from 'vue3-tel-input';
 import 'vue3-tel-input/dist/vue3-tel-input.css';
 
 import MyInput from "./components/MyInput.vue";
 import FormItem from "@/components/formItem";
+import {useGetUserGeo} from "@/hooks/useGetUserGeo";
 
-let token = '';
 const userCountryCode = ref('');
 const phoneValid = ref([]);
 
@@ -87,9 +84,7 @@ const rules = computed(() => ({
   firstName: {required, alpha, maxLength: maxLength(20)},
   lastName: {required, alpha, maxLength: maxLength(20)},
   email: {required, email },
-  // phone: {numeric, maxLength: maxLength(9), minLength: minLength(9)},
 }))
-
 
 const bindProps = {
   mode: "international",
@@ -98,13 +93,18 @@ const bindProps = {
   name: "telephone",
   maxLen: 25,
 }
+// getting geo user
+const initGeo = async () => {
+  const {userGeo, countryCode} = await useGetUserGeo();
+  formData.userGeo = userGeo;
+  userCountryCode.value = countryCode;
+}
 
-// функция проверяет валидацию поля vue-tel-input Phone при вводе номера телефона
+// the function checks the validation of the vue-tel-input Phone field when entering a phone number
 const onChangePhoneInput = (phone, phoneObject) => {
   if (phoneObject?.formatted) {
     formData.phone = phoneObject.formatted;
     if(!phoneObject.valid) {
-      debugger
       phoneValid.value = [{
         $message: 'Invalid phone number',
         $uid: 'phoneNumber'
@@ -115,54 +115,7 @@ const onChangePhoneInput = (phone, phoneObject) => {
   }
 }
 
-// получения токена авторизации для GEO user
-const getTokenAuth = async () => {
-  const data = JSON.stringify({
-    "username": "goodbot",
-    "password": "~mi-!z-@-sm@ll-b0T!~"
-  });
-
-  const config = {
-    method: 'post',
-    url: 'https://geotool247.finance-ru.com/api/v1/auth/login',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    data : data
-  };
-
-  try {
-    const response = await axios(config);
-    return response.data.data.token;
-  } catch (e) {
-    console.log(e);
-  }
-}
-
-// получения токена для GEO user
-const getUserGeo = async () => {
-  if(token === '' || token === undefined || token === null) {
-    token = await getTokenAuth()
-  }
-  const config = {
-    method: 'get',
-    url: 'https://geotool247.finance-ru.com/api/v1/geo/?lang=ru',
-    headers: {
-      'Authorization': 'Bearer ' + token
-    }
-  };
-
-  try {
-    const response = await axios(config);
-    debugger
-    formData.userGeo = response.data.data;
-    userCountryCode.value = response.data.data.country.iso;
-  } catch (e) {
-    console.log(e);
-  }
-}
-
-// получение Get параметром из URL выполняется при отправки формы
+// getting a GET parameter from the URL is done when submitting the form
 const getUrlParams = () => {
   return (() => {
     let a = window.location.search;
@@ -177,22 +130,16 @@ const getUrlParams = () => {
 }
 
 onMounted (  () => {
-  getUserGeo()
-
-  // не приходят данные (вроде не отправляется запрос)
-  // const {userIp, userCountryCode} = useUserIp();
+  initGeo();
 })
-
 const v$ = useVuelidate(rules, formData);
 
-const submitFrom = async (data) => {
-
+const submitFrom = async () => {
+  debugger
   const result = await v$.value.$validate();
-  console.log(result);
   if (result) {
     formData.urlParams = getUrlParams()
-    console.log(formData)
-    console.log('success')
+    console.log('success, data: ', formData)
   } else {
     console.log('no success')
   }
@@ -241,7 +188,8 @@ const submitFrom = async (data) => {
   font-size: 13px;
 }
 
-.form__input-error {
+.form__input-error,
+.form__input-error-tel {
   border:  2px solid #ff000054 !important;
 }
 
